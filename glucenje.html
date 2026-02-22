@@ -58,28 +58,21 @@
             overflow-y: auto;
             font-size: 0.9rem;
             min-height: 300px;
+            border: 1px solid rgba(255,255,255,0.05);
         }
+
+        .status-msg { font-size: 0.75rem; color: var(--accent); margin-bottom: 5px; }
 
         .ai-input-area { display: flex; gap: 10px; }
         input { flex-grow: 1; padding: 10px; border-radius: 5px; border: none; background: #334155; color: white; }
 
         /* --- Flashcards --- */
-        .flashcard-container {
-            perspective: 1000px;
-            margin-top: 20px;
-        }
-
+        .flashcard-container { perspective: 1000px; margin-top: 20px; }
         .flashcard {
-            width: 100%;
-            height: 200px;
-            transition: transform 0.6s;
-            transform-style: preserve-3d;
-            cursor: pointer;
-            position: relative;
+            width: 100%; height: 200px; transition: transform 0.6s;
+            transform-style: preserve-3d; cursor: pointer; position: relative;
         }
-
         .flashcard.flipped { transform: rotateY(180deg); }
-
         .card-face {
             position: absolute; width: 100%; height: 100%;
             backface-visibility: hidden;
@@ -87,19 +80,17 @@
             padding: 20px; border-radius: 15px; text-align: center;
             font-weight: bold; font-size: 1.2rem;
         }
-
         .card-front { background: var(--primary-color); color: white; }
         .card-back { background: var(--accent); color: white; transform: rotateY(180deg); }
 
-        /* --- Risalna deska (Overlay) --- */
+        /* --- Risalna deska --- */
         #board-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9);
             display: none; flex-direction: column; align-items: center; justify-content: center;
             z-index: 2000;
         }
-
-        #canvas { background: white; border-radius: 10px; cursor: crosshair; }
+        #canvas { background: white; border-radius: 10px; cursor: crosshair; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
 
         /* --- Motivacija --- */
         #quote-box {
@@ -109,11 +100,13 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.3);
             font-style: italic; font-size: 0.85rem;
             animation: slideIn 0.5s ease;
+            z-index: 10;
         }
 
-        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
-
-        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: var(--primary-color); color: white; }
+        @keyframes slideIn { from { transform: translateX(110%); } to { transform: translateX(0); } }
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: var(--primary-color); color: white; transition: 0.3s; }
+        .btn:disabled { background: #475569; cursor: not-allowed; }
+        .btn:hover:not(:disabled) { filter: brightness(1.1); }
     </style>
 </head>
 <body>
@@ -128,38 +121,39 @@
     <div class="main-layout">
         <div class="content">
             <section class="ai-section">
-                <h3><i class="fas fa-robot"></i> Študijski Asistent (AI)</h3>
-                <div id="ai-output">Pozdravljen! Sem tvoj AI pomočnik. Ko bova povezala Hugging Face, bom lahko razlagal snov.</div>
+                <h3><i class="fas fa-robot"></i> Študijski Asistent (Local AI)</h3>
+                <div id="ai-status" class="status-msg">Pripravljen.</div>
+                <div id="ai-output">Živijo! Sem tvoj lokalni asistent. Vprašaj me karkoli in poskusil bom odgovoriti. (Opomba: Prvi zagon zahteva prenos modela).</div>
                 <div class="ai-input-area">
-                    <input type="text" id="ai-input" placeholder="Vprašaj karkoli o temi...">
-                    <button class="btn" onclick="askAI()">Vprašaj</button>
+                    <input type="text" id="ai-input" placeholder="Vprašaj npr. 'Kaj je biologija?'...">
+                    <button class="btn" id="ai-btn" onclick="askAI()">Vprašaj</button>
                 </div>
             </section>
 
             <h3 style="margin-top: 30px;">Flashcards za ponavljanje</h3>
             <div class="flashcard-container" onclick="this.querySelector('.flashcard').classList.toggle('flipped')">
                 <div class="flashcard">
-                    <div class="card-face card-front" id="flash-q">Kaj je fotosinteza?</div>
-                    <div class="card-face card-back" id="flash-a">Proces, pri katerem rastline pretvorijo svetlobo v energijo.</div>
+                    <div class="card-face card-front" id="flash-q">Pritisni za začetek</div>
+                    <div class="card-face card-back" id="flash-a">Pritisni spodaj za naslednjo kartico</div>
                 </div>
             </div>
-            <button class="btn" style="margin-top: 10px;" onclick="generateFlashcard()">Naslednja kartica</button>
+            <button class="btn" style="margin-top: 10px;" onclick="generateFlashcard()">Generiraj novo vprašanje</button>
         </div>
 
         <div class="sidebar">
             <div class="ai-section">
                 <h3>Moja Predavanja</h3>
                 <ul style="list-style: none; margin-top: 10px;">
-                    <li style="padding: 10px; border-bottom: 1px solid #334155;">Matematika 1</li>
-                    <li style="padding: 10px; border-bottom: 1px solid #334155;">Programiranje</li>
-                    <li style="padding: 10px; border-bottom: 1px solid #334155;">Fizika</li>
+                    <li style="padding: 10px; border-bottom: 1px solid #334155;"><i class="fas fa-microchip"></i> Informatika</li>
+                    <li style="padding: 10px; border-bottom: 1px solid #334155;"><i class="fas fa-square-root-alt"></i> Matematika</li>
+                    <li style="padding: 10px; border-bottom: 1px solid #334155;"><i class="fas fa-dna"></i> Biologija</li>
                 </ul>
             </div>
         </div>
     </div>
 
     <div id="board-overlay">
-        <h2 style="margin-bottom: 10px;">Interaktivna tabla</h2>
+        <h2 style="margin-bottom: 10px; color: white;">Interaktivna tabla</h2>
         <canvas id="canvas" width="800" height="500"></canvas>
         <div style="margin-top: 10px;">
             <button class="btn" style="background: #ef4444;" onclick="clearCanvas()">Izbriši</button>
@@ -169,24 +163,57 @@
 
     <div id="quote-box">
         <i class="fas fa-quote-left"></i>
-        <span id="quote-text">Sreča spremlja pogumne.</span>
+        <span id="quote-text">Vse je mogoče, če se le potrudiš.</span>
     </div>
 
+    <script type="module">
+        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+
+        let generator = null;
+        const status = document.getElementById('ai-status');
+        const output = document.getElementById('ai-output');
+        const btn = document.getElementById('ai-btn');
+
+        window.askAI = async () => {
+            const inputField = document.getElementById('ai-input');
+            const text = inputField.value.trim();
+            if (!text) return;
+
+            if (!generator) {
+                status.innerText = "Nalagam model (to se zgodi le enkrat)...";
+                btn.disabled = true;
+                // Uporabljamo majhen model, ki je hiter v brskalniku
+                generator = await pipeline('text-generation', 'Xenova/LaMini-GPT-124M');
+                status.innerText = "Model naložen.";
+                btn.disabled = false;
+            }
+
+            output.innerHTML += `<div style="margin-top:10px; color:#4a90e2;"><b>Ti:</b> ${text}</div>`;
+            status.innerText = "Razmišljam...";
+            
+            const response = await generator(text, { max_new_tokens: 50, temperature: 0.7 });
+            
+            output.innerHTML += `<div style="margin-top:5px; padding-left:10px; border-left: 2px solid var(--accent);"><b>Asistent:</b> ${response[0].generated_text}</div>`;
+            output.scrollTop = output.scrollHeight;
+            status.innerText = "Pripravljen.";
+            inputField.value = '';
+        };
+    </script>
+
     <script>
-        // Motivacijski citati
+        // Motivacija
         const quotes = [
             "Uspeh je vsota majhnih naporov, ki se ponavljajo dan za dnem.",
             "Ne čakaj na priložnost. Ustvari jo.",
             "Znanje je moč.",
-            "Vse je težko, preden postane lahko."
+            "Vse je težko, preden postane lahko.",
+            "Tvoj trud danes je tvoj uspeh jutri."
         ];
-
         setInterval(() => {
-            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
-            document.getElementById('quote-text').innerText = randomQuote;
-        }, 10000);
+            document.getElementById('quote-text').innerText = quotes[Math.floor(Math.random() * quotes.length)];
+        }, 12000);
 
-        // Risalna deska logika
+        // Tabla
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         let drawing = false;
@@ -197,39 +224,38 @@
 
         function draw(e) {
             if (!drawing) return;
-            ctx.lineWidth = 3;
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineWidth = 4;
             ctx.lineCap = 'round';
-            ctx.strokeStyle = '#000';
-            ctx.lineTo(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop);
+            ctx.strokeStyle = '#2d3436';
+            ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(e.clientX - canvas.offsetLeft, e.clientY - canvas.offsetTop);
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
         }
 
         function toggleBoard() {
             const board = document.getElementById('board-overlay');
             board.style.display = board.style.display === 'flex' ? 'none' : 'flex';
         }
-
         function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
-        // Flashcards logika (Dummy generator)
-        function generateFlashcard() {
-            const qa = [
-                { q: "Kaj je HTML?", a: "Označevalni jezik za izdelavo spletnih strani." },
-                { q: "Kaj pomeni CPU?", a: "Central Processing Unit - osrednja procesna enota." }
-            ];
-            const rand = qa[Math.floor(Math.random() * qa.length)];
-            document.getElementById('flash-q').innerText = rand.q;
-            document.getElementById('flash-a').innerText = rand.a;
-        }
+        // Flashcards
+        const flashData = [
+            { q: "Kaj je osmoza?", a: "Prehajanje topila skozi polprepustno opno." },
+            { q: "Kdo je napisal Krst pri Savici?", a: "France Prešeren." },
+            { q: "Kaj je algoritem?", a: "Natančen opis postopka za rešitev določene naloge." },
+            { q: "Formula za silo?", a: "F = m * a (Sila = masa * pospešek)" }
+        ];
 
-        function askAI() {
-            const input = document.getElementById('ai-input').value;
-            const output = document.getElementById('ai-output');
-            output.innerHTML += `<p><b>Ti:</b> ${input}</p>`;
-            output.innerHTML += `<p><b>AI:</b> (Hugging Face model se bo nalagal tukaj...)</p>`;
-            document.getElementById('ai-input').value = '';
+        function generateFlashcard() {
+            const rand = flashData[Math.floor(Math.random() * flashData.length)];
+            const card = document.querySelector('.flashcard');
+            card.classList.remove('flipped');
+            setTimeout(() => {
+                document.getElementById('flash-q').innerText = rand.q;
+                document.getElementById('flash-a').innerText = rand.a;
+            }, 150);
         }
     </script>
 </body>
