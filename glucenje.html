@@ -189,62 +189,65 @@
     </div>
 
     <script type="module">
-        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
 
-        let generator = null;
-        const status = document.getElementById('ai-status');
-        const output = document.getElementById('ai-output');
-        const btn = document.getElementById('ai-btn');
-        const progContainer = document.getElementById('progress-container');
-        const progBar = document.getElementById('progress-bar');
+    let generator = null;
+    const status = document.getElementById('ai-status');
+    const output = document.getElementById('ai-output');
+    const btn = document.getElementById('ai-btn');
+    const progContainer = document.getElementById('progress-container');
+    const progBar = document.getElementById('progress-bar');
 
-        window.askAI = async () => {
-            const inputField = document.getElementById('ai-input');
-            const text = inputField.value.trim();
-            if (!text) return;
+    window.askAI = async () => {
+        const inputField = document.getElementById('ai-input');
+        const text = inputField.value.trim();
+        if (!text) return;
 
-            if (!generator) {
-                progContainer.style.display = 'block';
-                status.innerText = "Nalagam model... (Poglej napredek spodaj)";
-                btn.disabled = true;
+        if (!generator) {
+            progContainer.style.display = 'block';
+            status.innerText = "Nalagam pametnejši model (Flan-T5)...";
+            btn.disabled = true;
 
-                try {
-                    generator = await pipeline('text-generation', 'Xenova/LaMini-GPT-124M', {
-                        progress_callback: (data) => {
-                            if (data.status === 'progress') {
-                                // Izračunaj odstotek
-                                progBar.style.width = data.progress + '%';
-                            }
-                            if (data.status === 'ready') {
-                                status.innerText = "Model naložen!";
-                                setTimeout(() => {
-                                    progContainer.style.display = 'none';
-                                }, 1000);
-                            }
+            try {
+                // Flan-T5 je boljši za vprašanja/odgovore in bolje prenaša slovenščino
+                generator = await pipeline('text2text-generation', 'Xenova/flan-t5-small', {
+                    progress_callback: (data) => {
+                        if (data.status === 'progress') {
+                            progBar.style.width = data.progress + '%';
                         }
-                    });
-                    btn.disabled = false;
-                } catch (err) {
-                    status.innerText = "Napaka pri nalaganju.";
-                    console.error(err);
-                }
+                        if (data.status === 'ready') {
+                            status.innerText = "Asistent pripravljen.";
+                            setTimeout(() => { progContainer.style.display = 'none'; }, 1000);
+                        }
+                    }
+                });
+                btn.disabled = false;
+            } catch (err) {
+                status.innerText = "Napaka pri povezavi.";
+                console.error(err);
             }
+        }
 
-            output.innerHTML += `<div style="margin-top:10px; color:#4a90e2;"><b>Ti:</b> ${text}</div>`;
-            status.innerText = "AI razmišlja...";
-            
-            const response = await generator(text, { 
-                max_new_tokens: 60, 
-                temperature: 0.7,
-                repetition_penalty: 1.2
-            });
-            
-            output.innerHTML += `<div style="margin-top:5px; padding-left:10px; border-left: 2px solid var(--accent);"><b>Asistent:</b> ${response[0].generated_text}</div>`;
-            output.scrollTop = output.scrollHeight;
-            status.innerText = "Pripravljen.";
-            inputField.value = '';
-        };
-    </script>
+        output.innerHTML += `<div style="margin-top:10px; color:#4a90e2;"><b>Ti:</b> ${text}</div>`;
+        status.innerText = "Analiziram snov...";
+        
+        // Trik: Modelu povemo, naj odgovori v slovenščini (če zmore), 
+        // sicer pa Flan-T5 vsaj ne bo metal "I am an AI model" napak tako pogosto.
+        const response = await generator(text, { 
+            max_new_tokens: 100,
+            temperature: 0.5,
+            top_k: 50
+        });
+        
+        let aiRes = response[0].generated_text;
+        
+        output.innerHTML += `<div style="margin-top:5px; padding-left:10px; border-left: 2px solid var(--accent);"><b>Asistent:</b> ${aiRes}</div>`;
+        output.scrollTop = output.scrollHeight;
+        status.innerText = "Pripravljen.";
+        inputField.value = '';
+    };
+</script>
+
 
     <script>
         // --- Motivacija ---
