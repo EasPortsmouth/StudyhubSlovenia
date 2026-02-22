@@ -61,6 +61,23 @@
             border: 1px solid rgba(255,255,255,0.05);
         }
 
+        /* DODANO: Progress Bar stil */
+        #progress-container {
+            display: none;
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--primary-color);
+            transition: width 0.2s ease;
+        }
+
         .status-msg { font-size: 0.75rem; color: var(--accent); margin-bottom: 5px; }
 
         .ai-input-area { display: flex; gap: 10px; }
@@ -123,9 +140,14 @@
             <section class="ai-section">
                 <h3><i class="fas fa-robot"></i> Študijski Asistent (Local AI)</h3>
                 <div id="ai-status" class="status-msg">Pripravljen.</div>
-                <div id="ai-output">Živijo! Sem tvoj lokalni asistent. Vprašaj me karkoli in poskusil bom odgovoriti. (Opomba: Prvi zagon zahteva prenos modela).</div>
+                
+                <div id="progress-container">
+                    <div id="progress-bar"></div>
+                </div>
+
+                <div id="ai-output">Živijo! Sem tvoj lokalni asistent. Ob prvem vprašanju bom prenesel model v tvoj brskalnik (cca 150MB).</div>
                 <div class="ai-input-area">
-                    <input type="text" id="ai-input" placeholder="Vprašaj npr. 'Kaj je biologija?'...">
+                    <input type="text" id="ai-input" placeholder="Vprašaj karkoli...">
                     <button class="btn" id="ai-btn" onclick="askAI()">Vprašaj</button>
                 </div>
             </section>
@@ -167,12 +189,14 @@
     </div>
 
     <script type="module">
-        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
 
         let generator = null;
         const status = document.getElementById('ai-status');
         const output = document.getElementById('ai-output');
         const btn = document.getElementById('ai-btn');
+        const progContainer = document.getElementById('progress-container');
+        const progBar = document.getElementById('progress-bar');
 
         window.askAI = async () => {
             const inputField = document.getElementById('ai-input');
@@ -180,18 +204,40 @@
             if (!text) return;
 
             if (!generator) {
-                status.innerText = "Nalagam model (to se zgodi le enkrat)...";
+                progContainer.style.display = 'block';
+                status.innerText = "Nalagam model... (Poglej napredek spodaj)";
                 btn.disabled = true;
-                // Uporabljamo majhen model, ki je hiter v brskalniku
-                generator = await pipeline('text-generation', 'Xenova/LaMini-GPT-124M');
-                status.innerText = "Model naložen.";
-                btn.disabled = false;
+
+                try {
+                    generator = await pipeline('text-generation', 'Xenova/LaMini-GPT-124M', {
+                        progress_callback: (data) => {
+                            if (data.status === 'progress') {
+                                // Izračunaj odstotek
+                                progBar.style.width = data.progress + '%';
+                            }
+                            if (data.status === 'ready') {
+                                status.innerText = "Model naložen!";
+                                setTimeout(() => {
+                                    progContainer.style.display = 'none';
+                                }, 1000);
+                            }
+                        }
+                    });
+                    btn.disabled = false;
+                } catch (err) {
+                    status.innerText = "Napaka pri nalaganju.";
+                    console.error(err);
+                }
             }
 
             output.innerHTML += `<div style="margin-top:10px; color:#4a90e2;"><b>Ti:</b> ${text}</div>`;
-            status.innerText = "Razmišljam...";
+            status.innerText = "AI razmišlja...";
             
-            const response = await generator(text, { max_new_tokens: 50, temperature: 0.7 });
+            const response = await generator(text, { 
+                max_new_tokens: 60, 
+                temperature: 0.7,
+                repetition_penalty: 1.2
+            });
             
             output.innerHTML += `<div style="margin-top:5px; padding-left:10px; border-left: 2px solid var(--accent);"><b>Asistent:</b> ${response[0].generated_text}</div>`;
             output.scrollTop = output.scrollHeight;
@@ -201,7 +247,7 @@
     </script>
 
     <script>
-        // Motivacija
+        // --- Motivacija ---
         const quotes = [
             "Uspeh je vsota majhnih naporov, ki se ponavljajo dan za dnem.",
             "Ne čakaj na priložnost. Ustvari jo.",
@@ -213,7 +259,7 @@
             document.getElementById('quote-text').innerText = quotes[Math.floor(Math.random() * quotes.length)];
         }, 12000);
 
-        // Tabla
+        // --- Tabla ---
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         let drawing = false;
@@ -240,7 +286,7 @@
         }
         function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
-        // Flashcards
+        // --- Flashcards ---
         const flashData = [
             { q: "Kaj je osmoza?", a: "Prehajanje topila skozi polprepustno opno." },
             { q: "Kdo je napisal Krst pri Savici?", a: "France Prešeren." },
@@ -260,3 +306,4 @@
     </script>
 </body>
 </html>
+
